@@ -1,7 +1,7 @@
 #include"pch.h"
 #include "Player.h"
 #include "Board.h"
-
+#include<stack>
 void Player::Init(Board* board)
 {
 	_pos = board->GetEnterPos();
@@ -68,6 +68,34 @@ void Player::Init(Board* board)
 		}
 		
 	}
+
+	// 스택을 사용해서 길찾기를 개선하는 방법
+	// - 스택에 path를 저장하면서, 다음 path가 현재 스택의 top과 같으면(길을 되돌아 왔으면) 스택을 pop! 
+	// => 왔던 길을 다시 되돌아가지 않는다!
+	stack<Pos> s;
+	for (int i = 0; i < _path.size() - 1; i++)
+	{
+		if (s.empty() == false && s.top() == _path[i + 1])
+			s.pop();
+		else
+			s.push(_path[i]);
+	}
+
+	//마지막 도착점 예외처리
+	if (_path.empty() == false)
+		s.push(_path.back());
+
+
+	// 스택 특성상 뒤집어진 경로를 다시 되돌리기
+	vector<Pos> path;
+	while (s.empty() == false)
+	{
+		path.push_back(s.top());
+		s.pop();
+	}
+
+	std::reverse(path.begin(), path.end());
+	_path = path;
 
 }
 
