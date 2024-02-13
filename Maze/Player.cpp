@@ -7,11 +7,39 @@ void Player::Init(Board* board)
 	_pos = board->GetEnterPos();
 	_board = board;
 
+	//RightHand();
+	Bfs();
 	
+
+}
+
+void Player::Update(uint64 deltaTick)
+{
+	if (_pathIndex >= _path.size())
+		return;
+
+	_sumTick += deltaTick;
+	if (_sumTick >= MOVE_TICK)
+	{
+		_sumTick = 0;
+
+		_pos = _path[_pathIndex];
+		_pathIndex++;
+	}
+}
+
+bool Player::CanGo(Pos pos)
+{
+	TileType tileType = _board->GetTileType(pos);
+	return tileType == TileType::EMPTY;
+}
+
+void Player::RightHand()
+{
 	// 오른손 법칙 (우수 법칙) (미로 탐색 과정에서 계속 오른쪽으로 탐색)
 
 	// 목적지 도착하기 전에는 계속 실행
-	Pos dest = board->GetExitPos();
+	Pos dest = _board->GetExitPos();
 	Pos pos = _pos;
 
 	// 경로 초기화
@@ -42,7 +70,7 @@ void Player::Init(Board* board)
 			_path.push_back(pos);
 		}
 		// 2. 현재 바라보는 방향을 기준으로 전진할 수 있는지 확인
-		else if (CanGo(pos+front[_dir]))
+		else if (CanGo(pos + front[_dir]))
 		{
 			//앞으로 한 보 전진
 			pos += front[_dir];
@@ -54,19 +82,9 @@ void Player::Init(Board* board)
 		{
 			//왼쪽 방향으로 90도 회전
 			_dir = (_dir + 1) % DIR_COUNT;
-			/*switch (_dir)
-			{
-			case DIR_UP:
-				break;
-			case DIR_LEFT:
-				break;
-			case DIR_DOWN:
-				break;
-			case DIR_RIGHT:
-				break;
-			}*/
+			
 		}
-		
+
 	}
 
 	// 스택을 사용해서 길찾기를 개선하는 방법
@@ -96,26 +114,73 @@ void Player::Init(Board* board)
 
 	std::reverse(path.begin(), path.end());
 	_path = path;
-
 }
 
-void Player::Update(uint64 deltaTick)
+void Player::Bfs()
 {
-	if (_pathIndex >= _path.size())
-		return;
+	Pos dest = _board->GetExitPos();
+	Pos pos = _pos;
 
-	_sumTick += deltaTick;
-	if (_sumTick >= MOVE_TICK)
+	Pos front[4] =
 	{
-		_sumTick = 0;
+		Pos{-1,0},	//up
+		Pos{0,-1},	//left
+		Pos{1,0},	//down
+		Pos{0,1},	//right
+	};
 
-		_pos = _path[_pathIndex];
-		_pathIndex++;
+	//BFS 초기화
+	const int32 size = _board->GetSize();
+	vector<vector<bool>> discovered(size, vector<bool>(size, false));
+	map<Pos, Pos> parent;		// => key에 해당하는 정점이 value에 해당하는 정점으로부터 발견
+	
+	//BFS 초기값 설정
+	queue<Pos> q;
+	q.push(pos);
+	discovered[pos.y][pos.x] = true; 
+	parent[pos] = pos;
+
+	//BFS 시작
+	while (q.empty() == false)
+	{
+		pos = q.front();
+		q.pop();
+
+		if (pos == dest)
+			break;
+
+		//현 지점에서 상하좌우로 탐색
+		for (int32 dir = 0; dir < 4; dir++)
+		{
+			// 예외1. 갈 수 있는지
+			Pos nextPos = pos + front[dir];
+			if (CanGo(nextPos) == false)
+				continue;
+
+			// 예외2. 이미 탐색한 지역인지
+			if (discovered[nextPos.y][nextPos.x])
+				continue;
+
+			q.push(nextPos);
+			discovered[nextPos.y][nextPos.x] = true;
+			parent[nextPos] = pos;
+		}
 	}
-}
 
-bool Player::CanGo(Pos pos)
-{
-	TileType tileType = _board->GetTileType(pos);
-	return tileType == TileType::EMPTY;
+	// BFS로 찾아온 목적지로 부터, 경로를 역추적하여 최단경로 찾기
+	_path.clear();
+	pos = dest;
+
+	while (true)
+	{
+		_path.push_back(pos);
+
+		//시작점을 찾으면 종료
+		if (pos == parent[pos])
+			break;
+
+		pos = parent[pos];	// 역추적
+	}
+	//순서 뒤집기
+	std::reverse(_path.begin(), _path.end());
 }
