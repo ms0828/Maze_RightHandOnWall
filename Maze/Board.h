@@ -15,13 +15,24 @@ enum class TileType
 	WALL,
 };
 
-struct CostEdge
+struct CostEdge_Kruskal
 {
 	int cost;
 	Pos u;
 	Pos v;
 
-	bool operator<(CostEdge& other)
+	bool operator<(CostEdge_Kruskal& other)
+	{
+		return cost < other.cost;
+	}
+};
+
+struct CostEdge_Prim
+{
+	int cost;
+	Pos vtx;
+
+	bool operator<(const CostEdge_Prim& other) const
 	{
 		return cost < other.cost;
 	}
